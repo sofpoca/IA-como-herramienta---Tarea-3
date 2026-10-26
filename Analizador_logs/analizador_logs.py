@@ -1,11 +1,14 @@
 """Analiza registros con el formato [NIVEL] [YYYY-MM-DD] mensaje.
 
-Solo INFO, WARNING y ERROR al inicio cuentan como eventos. Una línea cuenta
-como incompleta si no tiene un nivel reconocido, una fecha ISO válida o un
-mensaje. Los eventos con nivel reconocido se cuentan aunque estén incompletos.
+Solo INFO, WARNING y ERROR al inicio cuentan como eventos. Las líneas vacías
+se ignoran. Una línea con contenido cuenta como incompleta si no tiene un
+nivel reconocido, una fecha ISO válida o un mensaje. Los eventos con nivel
+reconocido se cuentan aunque estén incompletos.
 """
 
+import os
 import re
+import sys
 from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
@@ -18,6 +21,12 @@ ISO_DATE_PATTERN = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 DATE_LIKE_PATTERN = re.compile(
     r"^\d{1,4}[-/]\d{1,2}[-/]\d{1,4}(?:[Tt].*)?$"
 )
+SEVERITY_COLORS = {
+    "INFO": "\033[34m",
+    "WARNING": "\033[33m",
+    "ERROR": "\033[31m",
+}
+COLOR_RESET = "\033[0m"
 
 
 @dataclass
@@ -27,6 +36,7 @@ class LineResult:
     date_text: Optional[str]
     message: str
     incomplete: bool
+    line_number: Optional[int] = None
 
 
 def _is_valid_iso_date(value: str) -> bool:
@@ -69,11 +79,20 @@ def analyze_line(line: str) -> LineResult:
 
 
 def analyze_lines(lines: Iterable[str]) -> Tuple[List[LineResult], Dict[str, int], int]:
-    results = [analyze_line(line) for line in lines]
+    results = []
+    for line_number, line in enumerate(lines, start=1):
+        # Una línea vacía no representa un registro incompleto.
+        if not line.strip():
+            continue
+        result = analyze_line(line)
+        result.line_number = line_number
+        results.append(result)
+
     counts = {severity: 0 for severity in SEVERITIES}
     incomplete_count = 0
 
     for result in results:
+        # Un nivel reconocido cuenta como evento aunque falten otros datos.
         if result.severity:
             counts[result.severity] += 1
         if result.incomplete:
@@ -112,34 +131,83 @@ def select_file() -> Optional[Path]:
     return Path(selected) if selected else None
 
 
+def _supports_color() -> bool:
+    if not sys.stdout.isatty():
+        return False
+
+    if os.name == "nt":
+        import ctypes
+
+        stdout_handle = ctypes.windll.kernel32.GetStdHandle(-11)
+        mode = ctypes.c_uint()
+        if not ctypes.windll.kernel32.GetConsoleMode(
+            stdout_handle, ctypes.byref(mode)
+        ):
+            return False
+        enable_virtual_terminal_processing = 0x0004
+        if not ctypes.windll.kernel32.SetConsoleMode(
+            stdout_handle, mode.value | enable_virtual_terminal_processing
+        ):
+            return False
+
+    return True
+
+
+def _colored_severity(severity: str, use_color: bool) -> str:
+    label = "[{}]".format(severity)
+    if use_color and severity in SEVERITY_COLORS:
+        return "{}{}{}".format(SEVERITY_COLORS[severity], label, COLOR_RESET)
+    return label
+
+
+def _ask_show_details() -> bool:
+    while True:
+        answer = input("\n¿Quieres ver el detalle línea por línea? (sí/no): ")
+        answer = answer.strip().casefold()
+        if answer in ("si", "sí", "s"):
+            return True
+        if answer in ("no", "n"):
+            return False
+        print("Respuesta no válida. Escribe sí o no.")
+
+
 def _print_results(
     results: List[LineResult], counts: Dict[str, int], incomplete_count: int
 ) -> None:
-    print("\nDetalle por línea:")
-    for number, result in enumerate(results, start=1):
-        if result.severity is None:
-            severity_text = "no reconocida"
-        else:
-            severity_text = result.severity
-
-        date_text = result.date_status
-        if result.date_text:
-            date_text += " ({})".format(result.date_text)
-
-        message_text = result.message or "(vacío)"
-        line_status = "incompleta" if result.incomplete else "completa"
-        print(
-            '  Línea {}: nivel={}, fecha={}, mensaje="{}", estado={}'.format(
-                number, severity_text, date_text, message_text, line_status
-            )
-        )
-
+    use_color = _supports_color()
     total_events = sum(counts.values())
     print("\nResumen:")
     print("  Total de eventos: {}".format(total_events))
     for severity in SEVERITIES:
-        print("  {}: {}".format(severity, counts[severity]))
+        label = _colored_severity(severity, use_color)
+        print("  {}: {}".format(label, counts[severity]))
     print("  Líneas incompletas o mal formateadas: {}".format(incomplete_count))
+
+    if not _ask_show_details():
+        return
+
+    print("\nDetalle por línea:")
+    for number, result in enumerate(results, start=1):
+        line_number = result.line_number or number
+        severity_label = (
+            _colored_severity(result.severity, use_color)
+            if result.severity
+            else "[NO RECONOCIDA]"
+        )
+        if result.date_text:
+            date_label = "{} ({})".format(
+                result.date_status.capitalize(), result.date_text
+            )
+        else:
+            date_label = result.date_status.capitalize()
+
+        message_text = result.message or "(vacío)"
+        line_status = "incompleta" if result.incomplete else "completa"
+        print("Línea {}:".format(line_number))
+        print("\t{}".format(severity_label))
+        print("\tFecha={}".format(date_label))
+        print("\tMensaje={}".format(message_text))
+        print("\tEstado={}".format(line_status))
 
 
 def main() -> None:
