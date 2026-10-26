@@ -13,6 +13,8 @@ Contiene tres registros con severidad reconocida, fecha real en formato
 `YYYY-MM-DD` y mensaje no vacío.
 
 **Resultado esperado**
+
+
 <img width="567" height="572" alt="image" src="https://github.com/user-attachments/assets/4647bfb0-131a-4300-a448-eacf5171a574" />
 
 - Total de eventos: 3.
