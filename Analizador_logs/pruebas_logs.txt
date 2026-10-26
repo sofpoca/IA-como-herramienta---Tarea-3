@@ -1,0 +1,9 @@
+[INFO] 2025-01-10 User logged in
+[WARNING] 2025-01-10 Multiple failed login attempts
+[ERROR] 2025-01-11 Failed to connect to database
+[INFO] 2025-02-30 Invalid calendar date
+[ERROR] 2025/01/12 Date uses an unsupported format
+[WARNING] Invalid password attempt
+[INFO] 2025-01-13
+[DEBUG] 2025-01-14 Unsupported severity
+
