@@ -61,6 +61,8 @@ mensaje vacío; y la 4, con severidad no reconocida.
 ## 3. Archivo con logs mixtos: `pruebas_logs.txt`
 
 **Resultado esperado**
+
+
 <img width="532" height="202" alt="image" src="https://github.com/user-attachments/assets/ab3d8cb8-6665-4cfb-84c8-a0763ccedf37" />
 
 <img width="520" height="867" alt="image" src="https://github.com/user-attachments/assets/88beca30-279f-45e0-beea-d22c3614afee" />
