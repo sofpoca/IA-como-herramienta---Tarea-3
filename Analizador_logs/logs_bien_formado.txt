@@ -1,0 +1,3 @@
+[INFO] 2025-03-01 Application started
+[WARNING] 2025-03-02 Disk space is low
+[ERROR] 2025-03-03 Database connection failed
