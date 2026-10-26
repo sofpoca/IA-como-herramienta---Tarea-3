@@ -1,4 +1,4 @@
-#IA como Herramienta, no como Autor: Desarrollo Guiado y Validado de un Script en Python
+# IA como Herramienta, no como Autor: Desarrollo Guiado y Validado de un Script en Python
 ## Casos de prueba del analizador
 
 Los archivos de prueba se ecnuentrran en la carpeta de `Anlizador_logs`
